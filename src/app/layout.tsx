@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
+import Link from "next/link";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -41,11 +42,11 @@ export default function RootLayout({
             borderBottom: '1px solid #e5e7eb',
           }}
         >
-          <a className="brand" href="/" style={{ fontWeight: 700, textDecoration: 'none', color: 'inherit' }}>
+          <Link href="/" className="brand" style={{ fontWeight: 700, textDecoration: 'none', color: 'inherit' }}>
             ⛽ Diesel Tracker
-          </a>
+          </Link>
           <nav>
-            <a href="/new" style={{ textDecoration: 'none', color: 'inherit', opacity: 0.85 }}>New Fill</a>
+            <Link href="/new" style={{ textDecoration: 'none', color: 'inherit', opacity: 0.85 }}>New Fill</Link>
           </nav>
         </header>
         <main className="container" style={{ maxWidth: 760, margin: '24px auto', padding: '0 16px' }}>
