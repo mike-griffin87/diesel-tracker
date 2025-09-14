@@ -32,24 +32,17 @@ export default function RootLayout({
         <meta name="apple-mobile-web-app-capable" content="yes" />
       </head>
       <body className={`${geistSans.variable} ${geistMono.variable}`}>
-        <header
-          className="topbar"
-          style={{
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            padding: '12px 16px',
-            borderBottom: '1px solid #e5e7eb',
-          }}
-        >
-          <Link href="/" className="brand" style={{ fontWeight: 700, textDecoration: 'none', color: 'inherit' }}>
-            ⛽ Diesel Tracker
-          </Link>
-          <nav>
-            <Link href="/new" style={{ textDecoration: 'none', color: 'inherit', opacity: 0.85 }}>New Fill</Link>
-          </nav>
+        <header className="topbar">
+          <div className="container" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <Link href="/" className="brand" style={{ fontWeight: 700, textDecoration: 'none', color: 'inherit' }}>
+              ⛽ Diesel Tracker
+            </Link>
+            <nav>
+              <Link href="/new" style={{ textDecoration: 'none', color: 'inherit', opacity: 0.85 }}>New Fill</Link>
+            </nav>
+          </div>
         </header>
-        <main className="container" style={{ maxWidth: 760, margin: '24px auto', padding: '0 16px' }}>
+        <main className="container">
           {children}
         </main>
         <script
