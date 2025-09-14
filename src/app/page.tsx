@@ -2,6 +2,8 @@
 import Link from 'next/link';
 import { supabaseAdmin } from '../../lib/supabaseAdmin';
 
+export const dynamic = 'force-dynamic';
+
 // Allow numeric fields to arrive as string or number from Supabase
 type Row = {
   id: string;
@@ -37,37 +39,51 @@ export default async function Home() {
 
   return (
     <div className="dash">
-      <div className="topbar">
-        <h1>Diesel Tracker</h1>
-        <Link href="/new" className="btnPrimary">+ Add a fill</Link>
-      </div>
+      <header className="topbarX">
+        <div className="brandX">Diesel Tracker</div>
+        <nav className="navX">
+          <Link href="/new" className="btnPrimary">+ Add a fill</Link>
+        </nav>
+      </header>
 
-      {/* Overview cards (placeholder-friendly) */}
-      <section className="cards">
-        <div className="card">
-          <div className="label">Total spend (loaded)</div>
-          <div className="value">{eur(spend)}</div>
+      {/* Overview cards */}
+      <section className="cardsX">
+        <div className="cardX">
+          <div className="labelX">Total spend (loaded)</div>
+          <div className="valueX">{eur(spend)}</div>
         </div>
-        <div className="card">
-          <div className="label">Avg €/L</div>
-          <div className="value">€{avgEurPerL.toFixed(3)}</div>
+        <div className="cardX">
+          <div className="labelX">Avg €/L</div>
+          <div className="valueX">€{avgEurPerL.toFixed(3)}</div>
         </div>
-        <div className="card">
-          <div className="label">Fills</div>
-          <div className="value">{fillsCount}</div>
+        <div className="cardX">
+          <div className="labelX">Fills</div>
+          <div className="valueX">{fillsCount}</div>
         </div>
       </section>
 
-      <div className="tableWrap">
-        <table className="table">
+      {/* Toolbar (placeholder for future filters/search) */}
+      <div className="toolbarX">
+        <div className="spacer" />
+        <div className="searchX">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden>
+            <path d="M21 21l-4.2-4.2" stroke="#94a3b8" strokeWidth="1.5" strokeLinecap="round"/>
+            <circle cx="11" cy="11" r="7" stroke="#94a3b8" strokeWidth="1.5"/>
+          </svg>
+          <input placeholder="Search (coming soon)" disabled />
+        </div>
+      </div>
+
+      <div className="tableWrapX">
+        <table className="tableX">
           <thead>
             <tr>
               <th>Date</th>
-              <th>Price (c/L)</th>
-              <th>€/L</th>
-              <th>Cost</th>
-              <th>Liters est.</th>
-              <th>Range</th>
+              <th className="num">Price (c/L)</th>
+              <th className="num">€/L</th>
+              <th className="num">Cost</th>
+              <th className="num">Liters est.</th>
+              <th className="num">Range</th>
               <th>Garage</th>
               <th>Reset</th>
               <th>Note</th>
@@ -83,11 +99,11 @@ export default async function Home() {
               return (
                 <tr key={r.id}>
                   <td className="ts">{d.toLocaleString()}</td>
-                  <td>{priceCents.toFixed(1)}</td>
-                  <td>€{eurPerL.toFixed(3)}</td>
-                  <td>{eur(cost)}</td>
-                  <td>{liters.toFixed(3)}</td>
-                  <td>{r.range_remaining_km ?? '—'}</td>
+                  <td className="num">{priceCents.toFixed(1)}</td>
+                  <td className="num">€{eurPerL.toFixed(3)}</td>
+                  <td className="num">{eur(cost)}</td>
+                  <td className="num">{liters.toFixed(3)}</td>
+                  <td className="num">{r.range_remaining_km ?? '—'}</td>
                   <td>{r.station_name ?? '—'}</td>
                   <td>
                     <span className={`chip ${r.reset_trip ? 'yes' : 'no'}`}>
@@ -106,28 +122,40 @@ export default async function Home() {
 
       {/* Local component styles to keep this file self-contained */}
       <style>{`
-        .dash{max-width:960px;margin:24px auto;padding:0 16px}
-        .topbar{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}
-        .topbar h1{margin:0;font-size:22px;letter-spacing:.2px}
-        .btnPrimary{display:inline-block;padding:10px 14px;border-radius:12px;background:#111827;color:#fff;text-decoration:none;border:1px solid #111827}
-        .btnPrimary:hover{opacity:.92}
+        /* widen layout */
+        .dash{max-width:1200px;margin:24px auto;padding:0 20px}
 
-        .cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;margin:12px 0 20px}
-        .card{border:1px solid #e5e7eb;border-radius:14px;background:#fff;box-shadow:0 1px 2px rgba(0,0,0,.05);padding:12px 14px}
-        .label{font-size:12px;color:#64748b;letter-spacing:.02em;text-transform:uppercase}
-        .value{font-size:22px;font-weight:600;margin-top:4px}
+        /* topbar */
+        .topbarX{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
+        .brandX{font-size:22px;font-weight:700;letter-spacing:.2px}
+        .navX a{margin-left:8px}
 
-        .tableWrap{border:1px solid #e5e7eb;border-radius:14px;overflow:hidden;background:#fff;box-shadow:0 1px 2px rgba(0,0,0,.05)}
-        .table{width:100%;border-collapse:separate;border-spacing:0}
+        /* kpi cards */
+        .cardsX{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px;margin:14px 0 18px}
+        .cardX{border:1px solid #e5e7eb;border-radius:14px;background:#fff;box-shadow:0 1px 2px rgba(0,0,0,.05);padding:14px}
+        .labelX{font-size:12px;color:#64748b;letter-spacing:.02em;text-transform:uppercase}
+        .valueX{font-size:24px;font-weight:600;margin-top:4px}
+
+        /* toolbar */
+        .toolbarX{display:flex;align-items:center;justify-content:space-between;margin:6px 0 10px}
+        .spacer{flex:1}
+        .searchX{display:flex;align-items:center;gap:8px;border:1px solid #e5e7eb;border-radius:12px;padding:6px 8px;background:#fff;color:#64748b}
+        .searchX input{border:none;outline:none;background:transparent;min-width:220px;color:#64748b}
+
+        /* table */
+        .tableWrapX{border:1px solid #e5e7eb;border-radius:14px;overflow:hidden;background:#fff;box-shadow:0 1px 2px rgba(0,0,0,.05)}
+        .tableX{width:100%;border-collapse:separate;border-spacing:0}
         thead th{position:sticky;top:0;background:#f8fafc;color:#64748b;font-weight:600;font-size:12px;letter-spacing:.02em;text-transform:uppercase;padding:12px;border-bottom:1px solid #e5e7eb}
         tbody td{padding:14px 12px;border-top:1px solid #f1f5f9}
         tbody tr:hover{background:#f9fafb}
         .ts{white-space:nowrap}
+        .num{text-align:right}
 
+        /* chips */
         .chip{display:inline-block;padding:2px 8px;border-radius:999px;border:1px solid #e2e8f0;background:#f8fafc;color:#0f172a;font-size:12px}
         .chip.yes{background:#ecfdf5;color:#065f46;border-color:#a7f3d0}
         .chip.no{background:#f1f5f9;color:#475569}
-        .chip.note{max-width:240px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;background:#eef2ff;border-color:#e0e7ff}
+        .chip.note{max-width:300px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;background:#eef2ff;border-color:#e0e7ff}
       `}</style>
     </div>
   );
