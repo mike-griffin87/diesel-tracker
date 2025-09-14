@@ -19,6 +19,7 @@ export type Database = {
           created_at: string | null
           filled_at: string
           id: string
+          note: string | null
           price_cents_per_liter: number
           range_remaining_km: number | null
           reset_trip: boolean
@@ -29,6 +30,7 @@ export type Database = {
           created_at?: string | null
           filled_at?: string
           id?: string
+          note?: string | null
           price_cents_per_liter: number
           range_remaining_km?: number | null
           reset_trip?: boolean
@@ -39,6 +41,7 @@ export type Database = {
           created_at?: string | null
           filled_at?: string
           id?: string
+          note?: string | null
           price_cents_per_liter?: number
           range_remaining_km?: number | null
           reset_trip?: boolean
