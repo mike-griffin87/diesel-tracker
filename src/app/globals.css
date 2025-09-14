@@ -14,8 +14,8 @@
   --success-border: #a7f3d0;
   --info-bg: #eef2ff;
   --info-border: #e0e7ff;
-
-  --radius: 14px;
+  --warn-bg: #fff7ed;
+  --warn-bg-hover: #ffedd5;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -34,6 +34,8 @@
     --success-border: #065f46;
     --info-bg: #1f2430;
     --info-border: #2a3240;
+    --warn-bg: #2b1f12;
+    --warn-bg-hover: #3b2a1a;
   }
 }
 
@@ -85,3 +87,45 @@ a { color: inherit; text-decoration: none; }
 .chip.yes { background: var(--success-bg); color: var(--success-text); border-color: var(--success-border); }
 .chip.no { background: var(--surface-2); color: var(--muted); }
 .chip.note { max-width: 240px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; background: var(--info-bg); border-color: var(--info-border); }
+
+/* Home header (X variants) */
+.topbarX { display:flex; align-items:center; justify-content:space-between; margin-bottom:10px; }
+.brandX { font-size:22px; font-weight:700; letter-spacing:.2px; }
+.navX a { margin-left:8px; }
+
+/* KPI cards (X variants) */
+.cardsX { display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:12px; margin:14px 0 18px; }
+.cardX { border:1px solid var(--line); border-radius:var(--radius); background:var(--surface); box-shadow:0 1px 2px rgba(0,0,0,.05); padding:14px; }
+.labelX { font-size:12px; color:var(--muted); letter-spacing:.02em; text-transform:uppercase; }
+.valueX { font-size:24px; font-weight:600; margin-top:4px; }
+
+/* Toolbar */
+.toolbarX { display:flex; align-items:center; justify-content:space-between; margin:6px 0 10px; }
+.spacer { flex:1; }
+.searchX { display:flex; align-items:center; gap:8px; border:1px solid var(--line); border-radius:12px; padding:6px 8px; background:var(--surface); color:var(--muted); }
+.searchX input { border:none; outline:none; background:transparent; min-width:220px; color:var(--muted); }
+
+/* Table (X variants) */
+.tableWrapX { border:1px solid var(--line); border-radius:var(--radius); overflow:hidden; background:var(--surface); box-shadow:0 1px 2px rgba(0,0,0,.05); }
+.tableX { width:100%; border-collapse:separate; border-spacing:0; }
+.tableX thead th { position:sticky; top:0; background:var(--surface-2); color:var(--muted); font-weight:600; font-size:12px; letter-spacing:.02em; text-transform:uppercase; padding:12px; border-bottom:1px solid var(--line); text-align:left; }
+.tableX tbody td { padding:14px 12px; border-top:1px solid color-mix(in oklab, var(--line) 70%, transparent); }
+.tableX tbody tr:hover { background: color-mix(in oklab, var(--surface-2) 80%, transparent); }
+.tableX .ts { white-space:nowrap; }
+.tableX .num { text-align:right; }
+
+/* Note as light text */
+.noteText { font-size:12px; color:var(--muted); }
+
+/* Stacked price (bold + muted) */
+.stack { display:flex; flex-direction:column; align-items:flex-end; line-height:1.1; }
+.stack .strong { font-weight:600; }
+.stack .muted { font-size:12px; color:var(--muted); }
+
+/* Garage with coloured dot */
+.garage { display:inline-flex; align-items:center; gap:8px; }
+.garage .dot { width:8px; height:8px; border-radius:999px; display:inline-block; box-shadow:0 0 0 1px rgba(0,0,0,.06) inset; }
+
+/* Anomaly highlighting */
+.tableX tbody tr.anomaly { background: var(--warn-bg); }
+.tableX tbody tr.anomaly:hover { background: var(--warn-bg-hover); }

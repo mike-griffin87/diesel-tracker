@@ -20,6 +20,19 @@ function eur(n: number) {
   return `€${n.toFixed(2)}`;
 }
 
+function formatDateHuman(d: Date) {
+  const M = ['JAN','FEB','MAR','APR','MAY','JUN','JUL','AUG','SEP','OCT','NOV','DEC'];
+  return `${M[d.getMonth()]} ${d.getDate()}, ${d.getFullYear()}`;
+}
+
+function colorFor(name: string | null) {
+  if (!name) return '#cbd5e1';
+  let h = 0;
+  for (let i = 0; i < name.length; i++) h = (h * 31 + name.charCodeAt(i)) >>> 0;
+  const hue = h % 360;
+  return `hsl(${hue}, 70%, 45%)`;
+}
+
 export default async function Home() {
   const { data, error } = await supabaseAdmin
     .from('fills')
@@ -79,11 +92,10 @@ export default async function Home() {
           <thead>
             <tr>
               <th>Date</th>
-              <th className="num">Price (c/L)</th>
-              <th className="num">€/L</th>
+              <th className="num">Price</th>
               <th className="num">Cost</th>
               <th className="num">Liters est.</th>
-              <th className="num">Range</th>
+              <th className="num">Range Remaining</th>
               <th>Garage</th>
               <th>Reset</th>
               <th>Note</th>
@@ -96,22 +108,30 @@ export default async function Home() {
               const cost = Number(r.total_cost_eur);
               const liters = eurPerL > 0 ? cost / eurPerL : 0;
               const d = new Date(r.filled_at);
+              const anomaly = !eurPerL || !cost; // highlight zero-price or zero-cost rows
+              const clr = colorFor(r.station_name);
               return (
-                <tr key={r.id}>
-                  <td className="ts">{d.toLocaleString()}</td>
-                  <td className="num">{priceCents.toFixed(1)}</td>
-                  <td className="num">€{eurPerL.toFixed(3)}</td>
+                <tr key={r.id} className={anomaly ? 'anomaly' : undefined}>
+                  <td className="ts">{formatDateHuman(d)}</td>
+                  <td className="num">
+                    <div className="stack">
+                      <div className="strong">{priceCents.toFixed(1)} c/L</div>
+                      <div className="muted">€{eurPerL.toFixed(3)} /L</div>
+                    </div>
+                  </td>
                   <td className="num">{eur(cost)}</td>
                   <td className="num">{liters.toFixed(3)}</td>
                   <td className="num">{r.range_remaining_km ?? '—'}</td>
-                  <td>{r.station_name ?? '—'}</td>
+                  <td>
+                    <span className="garage"><span className="dot" style={{backgroundColor: clr}} />{r.station_name ?? '—'}</span>
+                  </td>
                   <td>
                     <span className={`chip ${r.reset_trip ? 'yes' : 'no'}`}>
                       {r.reset_trip ? 'Yes' : 'No'}
                     </span>
                   </td>
                   <td>
-                    {r.note ? <span className="chip note" title={r.note}>{r.note}</span> : '—'}
+                    {r.note ? <span className="noteText" title={r.note}>{r.note}</span> : <span className="noteText">—</span>}
                   </td>
                 </tr>
               );
@@ -151,11 +171,26 @@ export default async function Home() {
         .ts{white-space:nowrap}
         .num{text-align:right}
 
-        /* chips */
+        /* chip for Reset */
         .chip{display:inline-block;padding:2px 8px;border-radius:999px;border:1px solid #e2e8f0;background:#f8fafc;color:#0f172a;font-size:12px}
         .chip.yes{background:#ecfdf5;color:#065f46;border-color:#a7f3d0}
         .chip.no{background:#f1f5f9;color:#475569}
-        .chip.note{max-width:300px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;background:#eef2ff;border-color:#e0e7ff}
+
+        /* note as light text */
+        .noteText{font-size:12px;color:#64748b}
+
+        /* stacked price */
+        .stack{display:flex;flex-direction:column;align-items:flex-end;line-height:1.1}
+        .stack .strong{font-weight:600}
+        .stack .muted{font-size:12px;color:#64748b}
+
+        /* garage with colored dot */
+        .garage{display:inline-flex;align-items:center;gap:8px}
+        .garage .dot{width:8px;height:8px;border-radius:999px;display:inline-block;box-shadow:0 0 0 1px rgba(0,0,0,.06) inset}
+
+        /* anomaly highlighting */
+        tbody tr.anomaly{background:#fff7ed} /* orange-50 */
+        tbody tr.anomaly:hover{background:#ffedd5}
       `}</style>
     </div>
   );
