@@ -1,6 +1,7 @@
 // src/app/page.tsx
 import Link from 'next/link';
 import { supabaseAdmin } from '../../lib/supabaseAdmin';
+import { NewFillForm } from './new/page';
 
 export const dynamic = 'force-dynamic';
 
@@ -25,15 +26,35 @@ function formatDateHuman(d: Date) {
   return `${M[d.getMonth()]} ${d.getDate()}, ${d.getFullYear()}`;
 }
 
+// Distinct garage colours (brand map + palette fallback)
+const BRAND_COLORS: { match: RegExp; color: string }[] = [
+  { match: /\b(circle\s*k)\b/i, color: '#ef4444' }, // red
+  { match: /\bapple\s*green\b/i, color: '#22c55e' }, // green
+  { match: /\bemo\b/i, color: '#0ea5e9' }, // sky
+  { match: /\bmaxol\b/i, color: '#1d4ed8' }, // blue
+  { match: /\btexaco\b/i, color: '#111827' }, // near-black
+  { match: /\bshell\b/i, color: '#f59e0b' }, // amber
+  { match: /\btop\s*oil\b/i, color: '#10b981' }, // emerald
+  { match: /\bamber\b/i, color: '#fb7185' }, // rose
+];
+const PALETTE = ['#2563eb','#f59e0b','#10b981','#a855f7','#ef4444','#14b8a6','#22c55e','#eab308','#06b6d4','#f97316'];
 function colorFor(name: string | null) {
   if (!name) return '#cbd5e1';
-  let h = 0;
-  for (let i = 0; i < name.length; i++) h = (h * 31 + name.charCodeAt(i)) >>> 0;
-  const hue = h % 360;
-  return `hsl(${hue}, 70%, 45%)`;
+  for (const b of BRAND_COLORS) if (b.match.test(name)) return b.color;
+  let sum = 0; for (let i=0;i<name.length;i++) sum = (sum + name.charCodeAt(i)) >>> 0;
+  return PALETTE[sum % PALETTE.length];
 }
 
-export default async function Home() {
+// Truncate to 2 decimals (no rounding)
+function trunc2(n: number) {
+  return Math.trunc(n * 100) / 100;
+}
+
+export default async function Home({
+  searchParams,
+}: {
+  searchParams?: Record<string, string | string[] | undefined>;
+}) {
   const { data, error } = await supabaseAdmin
     .from('fills')
     .select('id, filled_at, price_cents_per_liter, total_cost_eur, range_remaining_km, station_name, reset_trip, note')
@@ -50,15 +71,12 @@ export default async function Home() {
     : 0;
   const fillsCount = rows.length;
 
-  return (
-    <div className="dash">
-      <header className="topbarX">
-        <div className="brandX">Diesel Tracker</div>
-        <nav className="navX">
-          <Link href="/new" className="btnPrimary">+ Add a fill</Link>
-        </nav>
-      </header>
+  // Query-driven modal flag
+  const q = searchParams?.new;
+  const showNew = Array.isArray(q) ? q.includes('1') || q.includes('true') : (q === '1' || q === 'true');
 
+  return (
+    <>
       {/* Overview cards */}
       <section className="cardsX">
         <div className="cardX">
@@ -67,7 +85,7 @@ export default async function Home() {
         </div>
         <div className="cardX">
           <div className="labelX">Avg €/L</div>
-          <div className="valueX">€{avgEurPerL.toFixed(3)}</div>
+          <div className="valueX">€{trunc2(avgEurPerL).toFixed(2)}</div>
         </div>
         <div className="cardX">
           <div className="labelX">Fills</div>
@@ -75,24 +93,13 @@ export default async function Home() {
         </div>
       </section>
 
-      {/* Toolbar (placeholder for future filters/search) */}
-      <div className="toolbarX">
-        <div className="spacer" />
-        <div className="searchX">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden>
-            <path d="M21 21l-4.2-4.2" stroke="#94a3b8" strokeWidth="1.5" strokeLinecap="round"/>
-            <circle cx="11" cy="11" r="7" stroke="#94a3b8" strokeWidth="1.5"/>
-          </svg>
-          <input placeholder="Search (coming soon)" disabled />
-        </div>
-      </div>
-
+      {/* Table */}
       <div className="tableWrapX">
         <table className="tableX">
           <thead>
             <tr>
               <th>Date</th>
-              <th className="num">Price</th>
+              <th className="num">€/L</th>
               <th className="num">Cost</th>
               <th className="num">Liters est.</th>
               <th className="num">Range Remaining</th>
@@ -105,6 +112,7 @@ export default async function Home() {
             {rows.map((r) => {
               const priceCents = Number(r.price_cents_per_liter);
               const eurPerL = priceCents / 100.0;
+              const eurPerLTrunc = trunc2(eurPerL);
               const cost = Number(r.total_cost_eur);
               const liters = eurPerL > 0 ? cost / eurPerL : 0;
               const d = new Date(r.filled_at);
@@ -113,12 +121,7 @@ export default async function Home() {
               return (
                 <tr key={r.id} className={anomaly ? 'anomaly' : undefined}>
                   <td className="ts">{formatDateHuman(d)}</td>
-                  <td className="num">
-                    <div className="stack">
-                      <div className="strong">{priceCents.toFixed(1)} c/L</div>
-                      <div className="muted">€{eurPerL.toFixed(3)} /L</div>
-                    </div>
-                  </td>
+                  <td className="num">€{eurPerLTrunc.toFixed(2)}</td>
                   <td className="num">{eur(cost)}</td>
                   <td className="num">{liters.toFixed(3)}</td>
                   <td className="num">{r.range_remaining_km ?? '—'}</td>
@@ -140,58 +143,19 @@ export default async function Home() {
         </table>
       </div>
 
-      {/* Local component styles to keep this file self-contained */}
-      <style>{`
-        /* widen layout */
-        .dash{max-width:1200px;margin:24px auto;padding:0 20px}
-
-        /* topbar */
-        .topbarX{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
-        .brandX{font-size:22px;font-weight:700;letter-spacing:.2px}
-        .navX a{margin-left:8px}
-
-        /* kpi cards */
-        .cardsX{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px;margin:14px 0 18px}
-        .cardX{border:1px solid #e5e7eb;border-radius:14px;background:#fff;box-shadow:0 1px 2px rgba(0,0,0,.05);padding:14px}
-        .labelX{font-size:12px;color:#64748b;letter-spacing:.02em;text-transform:uppercase}
-        .valueX{font-size:24px;font-weight:600;margin-top:4px}
-
-        /* toolbar */
-        .toolbarX{display:flex;align-items:center;justify-content:space-between;margin:6px 0 10px}
-        .spacer{flex:1}
-        .searchX{display:flex;align-items:center;gap:8px;border:1px solid #e5e7eb;border-radius:12px;padding:6px 8px;background:#fff;color:#64748b}
-        .searchX input{border:none;outline:none;background:transparent;min-width:220px;color:#64748b}
-
-        /* table */
-        .tableWrapX{border:1px solid #e5e7eb;border-radius:14px;overflow:hidden;background:#fff;box-shadow:0 1px 2px rgba(0,0,0,.05)}
-        .tableX{width:100%;border-collapse:separate;border-spacing:0}
-        thead th{position:sticky;top:0;background:#f8fafc;color:#64748b;font-weight:600;font-size:12px;letter-spacing:.02em;text-transform:uppercase;padding:12px;border-bottom:1px solid #e5e7eb}
-        tbody td{padding:14px 12px;border-top:1px solid #f1f5f9}
-        tbody tr:hover{background:#f9fafb}
-        .ts{white-space:nowrap}
-        .num{text-align:right}
-
-        /* chip for Reset */
-        .chip{display:inline-block;padding:2px 8px;border-radius:999px;border:1px solid #e2e8f0;background:#f8fafc;color:#0f172a;font-size:12px}
-        .chip.yes{background:#ecfdf5;color:#065f46;border-color:#a7f3d0}
-        .chip.no{background:#f1f5f9;color:#475569}
-
-        /* note as light text */
-        .noteText{font-size:12px;color:#64748b}
-
-        /* stacked price */
-        .stack{display:flex;flex-direction:column;align-items:flex-end;line-height:1.1}
-        .stack .strong{font-weight:600}
-        .stack .muted{font-size:12px;color:#64748b}
-
-        /* garage with colored dot */
-        .garage{display:inline-flex;align-items:center;gap:8px}
-        .garage .dot{width:8px;height:8px;border-radius:999px;display:inline-block;box-shadow:0 0 0 1px rgba(0,0,0,.06) inset}
-
-        /* anomaly highlighting */
-        tbody tr.anomaly{background:#fff7ed} /* orange-50 */
-        tbody tr.anomaly:hover{background:#ffedd5}
-      `}</style>
-    </div>
+      {/* Modal controlled by query (?new=1) */}
+      {showNew && (
+        <div className="modalRoot">
+          <Link href="/" className="modalBackdrop" aria-label="Close" />
+          <div className="modalCard" role="dialog" aria-modal="true" aria-labelledby="newfill-title">
+            <div className="modalHeader">
+              <h2 id="newfill-title">New Fill</h2>
+              <Link href="/" className="btnIcon" aria-label="Close">×</Link>
+            </div>
+            <NewFillForm />
+          </div>
+        </div>
+      )}
+    </>
   );
 }

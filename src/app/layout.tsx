@@ -18,6 +18,8 @@ export const metadata: Metadata = {
   description: "Track diesel fills, price (c/L), and cost.",
 };
 
+const APP_VERSION = process.env.NEXT_PUBLIC_APP_VERSION;
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -33,25 +35,31 @@ export default function RootLayout({
       </head>
       <body className={`${geistSans.variable} ${geistMono.variable}`}>
         <header className="topbar">
-          <div className="container" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <Link href="/" className="brand" style={{ fontWeight: 700, textDecoration: 'none', color: 'inherit' }}>
-              ⛽ Diesel Tracker
-            </Link>
-            <nav>
-              <Link href="/new" style={{ textDecoration: 'none', color: 'inherit', opacity: 0.85 }}>New Fill</Link>
-            </nav>
-          </div>
+          <Link href="/" className="brand">
+            ⛽ Diesel Tracker {APP_VERSION ? <span className="version">v{APP_VERSION}</span> : null}
+          </Link>
+          <nav>
+            <Link href="/?new=1" className="btn btnPrimary" aria-label="Add a new fill entry" role="button">+ Add a fill</Link>
+          </nav>
         </header>
         <main className="container">
           {children}
         </main>
+
         <script
           dangerouslySetInnerHTML={{
             __html: `
 if ('serviceWorker' in navigator) {
-  window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/sw.js').catch(() => {});
-  });
+  const isLocal = ['localhost', '127.0.0.1'].includes(location.hostname) || location.hostname.endsWith('.local');
+  if (!isLocal) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('/sw.js').catch(() => {});
+    });
+  } else {
+    // In development, do not use a SW and clean up any old registrations
+    navigator.serviceWorker.getRegistrations?.().then(regs => regs.forEach(r => r.unregister()));
+    caches?.keys?.().then(keys => keys.forEach(k => caches.delete(k)));
+  }
 }
 `,
           }}

@@ -22,18 +22,28 @@ function intOrNull(raw: FormDataEntryValue | null): number | null {
   return Number.isNaN(n) ? null : n;
 }
 
+// Convert a YYYY-MM-DD string to a local Date at noon (avoids DST edge cases)
+function localDateFromYMD(ymd: string): Date | null {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(ymd)) return null;
+  return new Date(`${ymd}T12:00:00`);
+}
+
 async function createFill(formData: FormData) {
   'use server';
-  const dtStr = String(formData.get('dt') ?? '');
+  const dateStr = String(formData.get('date') ?? '');
   const price = num(formData.get('price'));
   const cost = num(formData.get('cost'));
   const range = intOrNull(formData.get('range'));
   const stationRaw = String(formData.get('station') ?? '').trim();
+  const noteRaw = String(formData.get('note') ?? '').trim();
   const station = stationRaw ? stationRaw : null;
-  const reset = String(formData.get('reset') ?? '') === 'on';
+  const note = noteRaw ? noteRaw : null;
+  const resetRaw = String(formData.get('reset') ?? '').toLowerCase();
+  const reset = resetRaw === 'true' || resetRaw === 'yes';
 
-  const dt = dtStr ? new Date(dtStr) : null;
-  if (!dt || !isFinite(price) || price <= 0 || !isFinite(cost) || cost <= 0) {
+  const dt = dateStr ? localDateFromYMD(dateStr) : null;
+  // Allow cost to be 0, but price must be > 0 and valid date required
+  if (!dt || !isFinite(price) || price <= 0 || !isFinite(cost) || cost < 0) {
     throw new Error('Invalid date, price, or cost.');
   }
 
@@ -44,6 +54,7 @@ async function createFill(formData: FormData) {
     range_remaining_km: range,
     station_name: station,
     reset_trip: reset,
+    note,
   };
 
   const { error } = await supabaseAdmin.from('fills').insert(payload);
@@ -53,48 +64,105 @@ async function createFill(formData: FormData) {
   redirect('/');
 }
 
-export default function NewFill() {
+function TodayYMD() {
   const now = new Date();
   const pad = (n: number) => String(n).padStart(2, '0');
-  const local = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}T${pad(now.getHours())}:${pad(now.getMinutes())}`;
+  return `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
+}
+
+export async function NewFillForm({ stations = [] }: { stations?: string[] }) {
+  return (
+    <form action={createFill} className="formGrid">
+      <label className="field">
+        <span className="label">Date</span>
+        <input className="input" type="date" name="date" defaultValue={TodayYMD()} required />
+      </label>
+
+      <label className="field">
+        <span className="label">Price (c/L)</span>
+        <input className="input" name="price" inputMode="decimal" placeholder="169.9" required />
+      </label>
+
+      <label className="field">
+        <span className="label">Cost (€)</span>
+        <input className="input" name="cost" inputMode="decimal" placeholder="70.00" required />
+      </label>
+
+      <label className="field">
+        <span className="label">Range Remaining (km)</span>
+        <input className="input" name="range" inputMode="numeric" placeholder="95" />
+      </label>
+
+      <label className="field">
+        <span className="label">Garage</span>
+        <select className="input" name="station" defaultValue="" required>
+          <option value="" disabled>Select garage</option>
+          {stations.filter(Boolean).map((s) => (
+            <option key={s} value={s}>{s}</option>
+          ))}
+        </select>
+      </label>
+
+      <label className="field">
+        <span className="label">Reset Clock</span>
+        <div className="seg">
+          <input type="radio" id="reset-no" name="reset" value="false" defaultChecked />
+          <label htmlFor="reset-no">No</label>
+          <input type="radio" id="reset-yes" name="reset" value="true" />
+          <label htmlFor="reset-yes">Yes</label>
+        </div>
+        <div className="help">Set to <b>Yes</b> if you reset the trip/clock after this fill.</div>
+      </label>
+
+      <label className="field">
+        <span className="label">Note (optional)</span>
+        <textarea className="input" name="note" rows={3} placeholder="Why cost is zero, etc." />
+      </label>
+
+      <div className="actions">
+        <button type="submit" className="btn btnPrimary">Save</button>
+      </div>
+
+      {/* local styles – these match the app's UI language; can move to globals later */}
+      <style>{`
+        .formGrid{display:grid;gap:12px}
+        .field{display:flex;flex-direction:column;gap:6px}
+        .label{font-size:12px;color:#444;font-weight:600}
+        .input{padding:10px 12px;border:2px solid var(--line);background:var(--surface);border-radius:var(--radius);color:var(--fg)}
+        .input:focus{outline:none;box-shadow:0 0 0 3px color-mix(in oklab, var(--primary) 20%, transparent)}
+        .actions{margin-top:8px}
+        .actions .btn{display:block;width:100%;text-align:center}
+        .seg{display:inline-grid;grid-auto-flow:column;gap:6px;align-items:center;background:var(--surface);border:2px solid var(--line);border-radius:var(--radius);padding:4px}
+        .seg input{position:absolute;opacity:0;pointer-events:none}
+        .seg label{padding:6px 10px;border-radius:10px;cursor:pointer;color:var(--muted)}
+        .seg input:checked + label{background:var(--surface-2);color:var(--fg);border:1px solid var(--line)}
+        .help{font-size:12px;color:var(--muted);margin-top:4px}
+      `}</style>
+    </form>
+  );
+}
+
+export default async function NewFillPage() {
+  // Load distinct station names for suggestions
+  const { data, error } = await supabaseAdmin
+    .from('fills')
+    .select('station_name')
+    .not('station_name', 'is', null)
+    .order('station_name', { ascending: true });
+
+  const DEFAULT_STATIONS = ['Applegreen','Circle K','Emo','Maxol','Texaco','Shell','Top Oil','Amber'];
+
+  const stations = (data || [])
+    .map((r) => r.station_name as string)
+    .filter(Boolean);
+  const uniq = Array.from(new Set(stations));
+  const allStations = Array.from(new Set([...DEFAULT_STATIONS, ...uniq])).sort();
 
   return (
-    <div style={{ maxWidth: 560, margin: '24px auto', padding: '0 16px' }}>
-      <h1>New Fill</h1>
-      <p>Price in <b>cents/L</b> (e.g., 169.9). Cost in €.</p>
-
-      <form action={createFill} style={{ display: 'grid', gap: 12 }}>
-        <label>
-          <div>Date &amp; time</div>
-          <input type="datetime-local" name="dt" defaultValue={local} required />
-        </label>
-
-        <label>
-          <div>Price (c/L)</div>
-          <input name="price" inputMode="decimal" placeholder="169.9" required />
-        </label>
-
-        <label>
-          <div>Cost (€)</div>
-          <input name="cost" inputMode="decimal" placeholder="70.00" required />
-        </label>
-
-        <label>
-          <div>Range Remaining (km)</div>
-          <input name="range" inputMode="numeric" placeholder="95" />
-        </label>
-
-        <label>
-          <div>Garage</div>
-          <input name="station" placeholder="Emo Kinnegad" />
-        </label>
-
-        <label style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <input type="checkbox" name="reset" /> Reset Clock
-        </label>
-
-        <button type="submit">Save</button>
-      </form>
+    <div className="container" style={{ maxWidth: 560 }}>
+      <h1 style={{ margin: '16px 0 8px', fontSize: 24, fontWeight: 700 }}>New Fill</h1>
+      <p style={{ color: 'var(--muted)', marginBottom: 16 }}>Price in <b>cents/L</b> (e.g., 169.9). Cost in €.</p>
+      <NewFillForm stations={allStations} />
     </div>
   );
 }
