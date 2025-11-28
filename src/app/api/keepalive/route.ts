@@ -29,9 +29,10 @@ export async function GET(request: Request) {
       status: 204,
       headers: { 'Cache-Control': 'no-store' },
     });
-  } catch (e: any) {
+  } catch (e: unknown) {
+    const msg = e instanceof Error ? e.message : 'keepalive failed';
     return NextResponse.json(
-      { ok: false, error: e?.message ?? 'keepalive failed' },
+      { ok: false, error: msg },
       { status: 500, headers: { 'Cache-Control': 'no-store' } },
     );
   }
