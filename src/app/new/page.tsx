@@ -4,6 +4,19 @@ import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import type { Database } from '../../types/supabase';
 
+// Allowed stations list (limit dropdown to these only)
+const ALLOWED_STATIONS = [
+  'Kylemore Road',
+  'Kinnegad Plaza',
+  'Circle K Kinnegad',
+  'Circle K Nass Road',
+  'Emo Tullamore',
+  'Circle K Citywest',
+  'Applegreen Enfield',
+  'Emo Kinnegad',
+  'Top Oil Enfield',
+];
+
 type FillInsert = Database['public']['Tables']['fills']['Insert'];
 
 function num(raw: FormDataEntryValue | null): number {
@@ -71,11 +84,41 @@ function TodayYMD() {
 }
 
 export async function NewFillForm({ stations = [] }: { stations?: string[] }) {
+  // Curated + dynamic: merge baseline list with distinct DB names, then rank by last 180 days frequency
+  const base = (stations && stations.length) ? stations : ALLOWED_STATIONS;
+
+  // Look back 180 days so "most used" reflects recent behavior
+  const sinceISO = new Date(Date.now() - 180 * 24 * 60 * 60 * 1000).toISOString();
+
+  const { data } = await supabaseAdmin
+    .from('fills')
+    .select('station_name, filled_at')
+    .not('station_name', 'is', null)
+    .gte('filled_at', sinceISO)
+    .limit(1000);
+
+  const fetched = Array.from(new Set((data ?? []).map((r: any) => r.station_name as string))).filter(Boolean);
+  const allStations = Array.from(new Set([...base, ...fetched]));
+
+  // Frequency by station (from recent window)
+  const freq: Record<string, number> = {};
+  for (const row of data ?? []) {
+    const name = (row as any).station_name as string | null;
+    if (!name) continue;
+    freq[name] = (freq[name] || 0) + 1;
+  }
+
+  // Top N by frequency; divider, then the rest alphabetically
+  const TOP_N = 3;
+  const byFreq = [...allStations].sort((a, b) => (freq[b] || 0) - (freq[a] || 0) || a.localeCompare(b));
+  const top = byFreq.filter((s) => (freq[s] || 0) > 0).slice(0, TOP_N);
+  const rest = allStations.filter((s) => !top.includes(s)).sort((a, b) => a.localeCompare(b));
+
   return (
     <form action={createFill} className="formGrid">
-      <label className="field">
+      <label className="field" htmlFor="date">
         <span className="label">Date</span>
-        <input className="input" type="date" name="date" defaultValue={TodayYMD()} required />
+        <input id="date" className="input" type="date" name="date" defaultValue={TodayYMD()} required />
       </label>
 
       <label className="field">
@@ -97,8 +140,14 @@ export async function NewFillForm({ stations = [] }: { stations?: string[] }) {
         <span className="label">Garage</span>
         <select className="input" name="station" defaultValue="" required>
           <option value="" disabled>Select garage</option>
-          {stations.filter(Boolean).map((s) => (
-            <option key={s} value={s}>{s}</option>
+          {top.map((s) => (
+            <option key={`top-${s}`} value={s}>{s}</option>
+          ))}
+          {top.length && rest.length ? (
+            <option key="divider" value="" disabled>────────────</option>
+          ) : null}
+          {rest.map((s) => (
+            <option key={`rest-${s}`} value={s}>{s}</option>
           ))}
         </select>
       </label>
@@ -132,9 +181,9 @@ export async function NewFillForm({ stations = [] }: { stations?: string[] }) {
         .input:focus{outline:none;box-shadow:0 0 0 3px color-mix(in oklab, var(--primary) 20%, transparent)}
         .actions{margin-top:8px}
         .actions .btn{display:block;width:100%;text-align:center}
-        .seg{display:inline-grid;grid-auto-flow:column;gap:6px;align-items:center;background:var(--surface);border:2px solid var(--line);border-radius:var(--radius);padding:4px}
+        .seg{display:grid;grid-template-columns:1fr 1fr;gap:6px;align-items:center;background:var(--surface);border:2px solid var(--line);border-radius:var(--radius);padding:4px;width:100%}
         .seg input{position:absolute;opacity:0;pointer-events:none}
-        .seg label{padding:6px 10px;border-radius:10px;cursor:pointer;color:var(--muted)}
+        .seg label{display:flex;align-items:center;justify-content:center;padding:10px;border-radius:10px;cursor:pointer;color:var(--muted);width:100%}
         .seg input:checked + label{background:var(--surface-2);color:var(--fg);border:1px solid var(--line)}
         .help{font-size:12px;color:var(--muted);margin-top:4px}
       `}</style>
@@ -143,26 +192,11 @@ export async function NewFillForm({ stations = [] }: { stations?: string[] }) {
 }
 
 export default async function NewFillPage() {
-  // Load distinct station names for suggestions
-  const { data, error } = await supabaseAdmin
-    .from('fills')
-    .select('station_name')
-    .not('station_name', 'is', null)
-    .order('station_name', { ascending: true });
-
-  const DEFAULT_STATIONS = ['Applegreen','Circle K','Emo','Maxol','Texaco','Shell','Top Oil','Amber'];
-
-  const stations = (data || [])
-    .map((r) => r.station_name as string)
-    .filter(Boolean);
-  const uniq = Array.from(new Set(stations));
-  const allStations = Array.from(new Set([...DEFAULT_STATIONS, ...uniq])).sort();
-
   return (
     <div className="container" style={{ maxWidth: 560 }}>
       <h1 style={{ margin: '16px 0 8px', fontSize: 24, fontWeight: 700 }}>New Fill</h1>
       <p style={{ color: 'var(--muted)', marginBottom: 16 }}>Price in <b>cents/L</b> (e.g., 169.9). Cost in €.</p>
-      <NewFillForm stations={allStations} />
+      <NewFillForm stations={ALLOWED_STATIONS} />
     </div>
   );
 }
