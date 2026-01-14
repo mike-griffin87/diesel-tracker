@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import Link from "next/link";
 import { SettingsMenu } from "./SettingsMenu";
+import packageJson from '../../package.json';
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -19,13 +20,13 @@ export const metadata: Metadata = {
   description: "Track diesel fills, price (c/L), and cost.",
 };
 
+const APP_VERSION = packageJson.version;
+
 export default function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const APP_VERSION = process.env.NEXT_PUBLIC_APP_VERSION;
-  
   return (
     <html lang="en">
       <head>
