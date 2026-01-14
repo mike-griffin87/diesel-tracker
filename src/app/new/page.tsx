@@ -97,13 +97,13 @@ export async function NewFillForm({ stations = [] }: { stations?: string[] }) {
     .gte('filled_at', sinceISO)
     .limit(1000);
 
-  const fetched = Array.from(new Set((data ?? []).map((r: any) => r.station_name as string))).filter(Boolean);
+  const fetched = Array.from(new Set((data ?? []).map((r) => r.station_name as string))).filter(Boolean);
   const allStations = Array.from(new Set([...base, ...fetched]));
 
   // Frequency by station (from recent window)
   const freq: Record<string, number> = {};
   for (const row of data ?? []) {
-    const name = (row as any).station_name as string | null;
+    const name = row.station_name as string | null;
     if (!name) continue;
     freq[name] = (freq[name] || 0) + 1;
   }

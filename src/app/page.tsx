@@ -122,8 +122,7 @@ async function updateFill(formData: FormData) {
     .eq('id', id);
 
   // Ignore unique-conflict silently; just refresh list
-  // @ts-ignore
-  if (error && error.code !== '23505') {
+  if (error && (error as { code?: string }).code !== '23505') {
     console.error('Update error', error);
   }
   revalidatePath('/');
@@ -242,7 +241,6 @@ export default async function Home({
               const cost = Number(r.total_cost_eur);
               const liters = eurPerL > 0 ? cost / eurPerL : 0;
               const d = new Date(r.filled_at);
-              const anomaly = !eurPerL || !cost; // highlight zero-price or zero-cost rows
               const clr = colorFor(r.station_name);
               return (
                 <tr key={r.id}>
