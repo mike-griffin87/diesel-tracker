@@ -19,13 +19,13 @@ export const metadata: Metadata = {
   description: "Track diesel fills, price (c/L), and cost.",
 };
 
-const APP_VERSION = process.env.NEXT_PUBLIC_APP_VERSION;
-
 export default function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const APP_VERSION = process.env.NEXT_PUBLIC_APP_VERSION;
+  
   return (
     <html lang="en">
       <head>
